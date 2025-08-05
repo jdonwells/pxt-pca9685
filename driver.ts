@@ -239,7 +239,8 @@ namespace PCA9685 {
         address: number;
         servos: ServoConfig[];
         freq: number;
-        constructor(address: number = 0x40, freq: number = 50) {
+        prescaler: number;
+        constructor(address: number = 0x40, freq: number = 50, prescaler: number = 121) {
             this.address = address
             this.servos = [
                 new ServoConfig(1, DefaultServoConfig),
@@ -260,14 +261,15 @@ namespace PCA9685 {
                 new ServoConfig(16, DefaultServoConfig)
             ]
             this.freq = freq
-            init(address, freq)
+            this.prescaler = prescaler
+            init(address, freq, prescaler)
         }
     }
 
     export const chips: ChipConfig[] = []
 
     function calcFreqPrescaler(freq: number): number {
-        return (25000000 / (freq * chipResolution)) - 1;
+        return Math.round(25000000 / (freq * chipResolution)) - 1;
     }
 
     function stripHexPrefix(str: string): string {
@@ -443,14 +445,15 @@ namespace PCA9685 {
     /**
      * Used to setup the chip, will cause the chip to do a full reset and turn off all outputs.
      * @param chipAddress [64-125] The I2C address of your PCA9685; eg: 64
-     * @param freq [40-1000] Frequency (40-1000) in hertz to run the clock cycle at; eg: 50
+     * @param freq [24-1526] frequency of PWM; eg: 50
+     * @param count [3-255] oscillator cycles per PWM increment; eg: 121
      */
     //% block advanced=true
-    export function init(chipAddress: number = 0x40, newFreq: number = 50) {
+    export function init(chipAddress: number = 0x40, freq: number = 50, count: number = 121) {
         debug(`Init chip at address ${chipAddress} to ${newFreq}Hz`)
         const buf = pins.createBuffer(2)
-        const freq = (newFreq > 1000 ? 1000 : (newFreq < 40 ? 40 : newFreq))
-        const prescaler = calcFreqPrescaler(freq)
+        const freq = 50
+        const prescaler = count
 
         write(chipAddress, modeRegister1, sleep)
 
@@ -473,7 +476,7 @@ namespace PCA9685 {
      */
     //% block
     export function reset(chipAddress: number = 0x40): void {
-        return init(chipAddress, getChipConfig(chipAddress).freq);
+        return init(chipAddress, getChipConfig(chipAddress).prescaler);
     }
 
     /**
